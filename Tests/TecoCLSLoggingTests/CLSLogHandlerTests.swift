@@ -1,8 +1,9 @@
 import XCTest
 @testable import TecoCLSLogging
 import AsyncHTTPClient
-import TecoSigner
 import Logging
+import NIOFoundationCompat
+import TecoSigner
 
 final class CLSLogHandlerTests: XCTestCase {
     func testLogGroup() throws {
@@ -48,7 +49,8 @@ final class CLSLogHandlerTests: XCTestCase {
             secretId: "AKIDz8krbsJ5yKBZQpn74WFkmLPx3EXAMPLE",
             secretKey: "Gu5t9xGARNpq86cd98joQYCN3EXAMPLE"
         )
-        let request = try logger.uploadLogRequest(logGroup, credential: credential, date: date)
+        // test with minimal signing here in case new headers are added
+        let request = try logger.uploadLogRequest(logGroup, credential: credential, date: date, signing: .minimal)
         XCTAssertEqual(request.method, .POST)
         XCTAssertEqual(request.host, "cls.tencentcloudapi.com")
 
@@ -76,7 +78,7 @@ final class CLSLogHandlerTests: XCTestCase {
         XCTAssertEqual(request.headers.first(name: "x-tc-region"), "ap-guangzhou")
         XCTAssertEqual(
             request.headers.first(name: "authorization"),
-            "TC3-HMAC-SHA256 Credential=AKIDz8krbsJ5yKBZQpn74WFkmLPx3EXAMPLE/2001-09-09/cls/tc3_request, SignedHeaders=content-type;host;x-cls-topicid;x-tc-action;x-tc-content-sha256;x-tc-region;x-tc-requestclient;x-tc-timestamp;x-tc-version, Signature=28613bf6feee6995b39d9db3e013f2d4699ec545115244e6a96b6d130a9dac25"
+            "TC3-HMAC-SHA256 Credential=AKIDz8krbsJ5yKBZQpn74WFkmLPx3EXAMPLE/2001-09-09/cls/tc3_request, SignedHeaders=content-type;host, Signature=1249e1b231a7a1c5d840c2c36d5e832a20671ab370256120fb6c1c9d26d28d12"
         )
     }
 }

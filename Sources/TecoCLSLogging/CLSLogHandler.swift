@@ -37,7 +37,7 @@ public struct CLSLogHandler: LogHandler {
         }
     }
 
-    func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: any Credential, date: Date = Date()) throws -> HTTPClient.Request {
+    func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: any Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClient.Request {
         let logGroupList = Cls_LogGroupList.with {
             $0.logGroupList = [logGroup]
         }
@@ -62,6 +62,7 @@ public struct CLSLogHandler: LogHandler {
                 "x-cls-topicid": self.topicID
             ],
             body: .data(data),
+            mode: signing,
             date: date
         )
 
