@@ -1,8 +1,8 @@
-import Logging
-import Foundation
-import TecoSigner
 import AsyncHTTPClient
+import Foundation
+import Logging
 import NIOHTTP1
+import TecoSigner
 
 public struct CLSLogHandler: LogHandler {
     public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
