@@ -20,8 +20,9 @@ public struct CLSLogHandler: LogHandler {
 
     // MARK: Log handler implemenation
 
-    public var metadata: Logger.Metadata = .init()
     public var logLevel: Logger.Level = .info
+    public var metadata: Logger.Metadata = .init()
+    public var metadataProvider: Logger.MetadataProvider?
 
     public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
         get {
@@ -33,6 +34,9 @@ public struct CLSLogHandler: LogHandler {
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
+        let metadata = (metadataProvider?.get() ?? [:])
+            .merging(self.metadata, uniquingKeysWith: { $1 })
+            .merging(metadata ?? [:], uniquingKeysWith: { $1 })
         let log = Cls_LogGroup(level, message: message, metadata: metadata, source: source, file: file, function: function, line: line)
         precondition(log.isInitialized)
         if let request = try? self.uploadLogRequest(log, credential: self.credentialProvider()) {
