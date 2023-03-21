@@ -26,31 +26,33 @@ public struct CLSLogHandler: LogHandler {
 
     public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
         get {
-            metadata[key]
+            self.metadata[key]
         }
         set {
-            metadata[key] = newValue
+            self.metadata[key] = newValue
         }
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
-        let metadata = resolveMetadata(metadata)
+        let metadata = self.resolveMetadata(metadata)
         let log = Cls_LogGroup(level, message: message, metadata: metadata, source: source, file: file, function: function, line: line)
         precondition(log.isInitialized)
         if let request = try? self.uploadLogRequest(log, credential: self.credentialProvider()) {
-            _ = try? self.client.execute(request: request).wait()
+            Task.detached {
+                try await self.client.execute(request, timeout: .seconds(3))
+            }
         }
     }
 
     // MARK: Internal implemenation
 
     func resolveMetadata(_ metadata: Logger.Metadata?) -> Logger.Metadata {
-        return (metadataProvider?.get() ?? [:])
+        return (self.metadataProvider?.get() ?? [:])
             .merging(self.metadata, uniquingKeysWith: { $1 })
             .merging(metadata ?? [:], uniquingKeysWith: { $1 })
     }
 
-    func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClient.Request {
+    func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClientRequest {
         let logGroupList = Cls_LogGroupList.with {
             $0.logGroupList = [logGroup]
         }
@@ -59,12 +61,9 @@ public struct CLSLogHandler: LogHandler {
         let signer = TCSigner(credential: credential, service: "cls")
         let data = try logGroupList.serializedData()
 
-        var request = try HTTPClient.Request(
-            url: "https://cls.tencentcloudapi.com",
-            method: .POST,
-            body: .data(data)
-        )
-        request.headers = signer.signHeaders(
+        var request = HTTPClientRequest(url: "https://cls.tencentcloudapi.com")
+        request.method = .POST
+        request.headers = try signer.signHeaders(
             url: request.url,
             method: request.method,
             headers: [
@@ -78,6 +77,7 @@ public struct CLSLogHandler: LogHandler {
             mode: signing,
             date: date
         )
+        request.body = .bytes(data)
 
         return request
     }

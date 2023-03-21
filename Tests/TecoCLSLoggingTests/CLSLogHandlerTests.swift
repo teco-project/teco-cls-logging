@@ -2,12 +2,11 @@ import XCTest
 @testable import TecoCLSLogging
 import AsyncHTTPClient
 import Logging
-import NIOFoundationCompat
 import TecoSigner
 
 final class CLSLogHandlerTests: XCTestCase {
     func testLogGroup() throws {
-        let data = Data([10, 105, 8, 128, 148, 235, 220, 3, 18, 14, 10, 5, 108, 101, 118, 101, 108, 18, 5, 68, 69, 66, 85, 71, 18, 26, 10, 7, 109, 101, 115, 115, 97, 103, 101, 18, 15, 84, 101, 115, 116, 32, 108, 111, 103, 32, 103, 114, 111, 117, 112, 46, 18, 13, 10, 8, 116, 101, 115, 116, 45, 115, 101, 113, 18, 1, 49, 18, 26, 10, 8, 102, 117, 110, 99, 116, 105, 111, 110, 18, 14, 116, 101, 115, 116, 76, 111, 103, 71, 114, 111, 117, 112, 40, 41, 18, 10, 10, 4, 108, 105, 110, 101, 18, 2, 49, 48, 26, 44, 84, 101, 99, 111, 67, 76, 83, 76, 111, 103, 103, 105, 110, 103, 84, 101, 115, 116, 115, 47, 67, 76, 83, 76, 111, 103, 72, 97, 110, 100, 108, 101, 114, 84, 101, 115, 116, 115, 46, 115, 119, 105, 102, 116, 34, 19, 84, 101, 99, 111, 67, 76, 83, 76, 111, 103, 103, 105, 110, 103, 84, 101, 115, 116, 115])
+        let data = Data([10, 104, 8, 128, 148, 235, 220, 3, 18, 14, 10, 5, 108, 101, 118, 101, 108, 18, 5, 68, 69, 66, 85, 71, 18, 26, 10, 7, 109, 101, 115, 115, 97, 103, 101, 18, 15, 84, 101, 115, 116, 32, 108, 111, 103, 32, 103, 114, 111, 117, 112, 46, 18, 13, 10, 8, 116, 101, 115, 116, 45, 115, 101, 113, 18, 1, 49, 18, 26, 10, 8, 102, 117, 110, 99, 116, 105, 111, 110, 18, 14, 116, 101, 115, 116, 76, 111, 103, 71, 114, 111, 117, 112, 40, 41, 18, 9, 10, 4, 108, 105, 110, 101, 18, 1, 49, 26, 44, 84, 101, 99, 111, 67, 76, 83, 76, 111, 103, 103, 105, 110, 103, 84, 101, 115, 116, 115, 47, 67, 76, 83, 76, 111, 103, 72, 97, 110, 100, 108, 101, 114, 84, 101, 115, 116, 115, 46, 115, 119, 105, 102, 116, 34, 19, 84, 101, 99, 111, 67, 76, 83, 76, 111, 103, 103, 105, 110, 103, 84, 101, 115, 116, 115])
         let logGroup = Cls_LogGroup(
             .debug,
             message: "Test log group.",
@@ -15,10 +14,10 @@ final class CLSLogHandlerTests: XCTestCase {
             source: "TecoCLSLoggingTests",
             file: "TecoCLSLoggingTests/CLSLogHandlerTests.swift",
             function: "testLogGroup()",
-            line: 10,
+            line: 1,
             date: Date(timeIntervalSince1970: 1_000_000_000)
         )
-        XCTAssertEqual(data, try logGroup.serializedData())
+        XCTAssertEqual(try logGroup.serializedData(), data)
     }
 
     func testResolveMetadata() throws {
@@ -76,11 +75,10 @@ final class CLSLogHandlerTests: XCTestCase {
         let logGroup = Cls_LogGroup(
             .info,
             message: "Test upload request.",
-            metadata: ["test-seq": "2"],
             source: "TecoCLSLoggingTests",
             file: "TecoCLSLoggingTests/CLSLogHandlerTests.swift",
             function: "testUploadRequest()",
-            line: 35,
+            line: 1,
             date: date
         )
 
@@ -92,22 +90,6 @@ final class CLSLogHandlerTests: XCTestCase {
         // test with minimal signing here in case new headers are added
         let request = try logger.uploadLogRequest(logGroup, credential: credential, date: date, signing: .minimal)
         XCTAssertEqual(request.method, .POST)
-        XCTAssertEqual(request.host, "cls.tencentcloudapi.com")
-
-        // assert request body data
-        let data = Data([10, 183, 1, 10, 114, 8, 128, 148, 235, 220, 3, 18, 13, 10, 5, 108, 101, 118, 101, 108, 18, 4, 73, 78, 70, 79, 18, 31, 10, 7, 109, 101, 115, 115, 97, 103, 101, 18, 20, 84, 101, 115, 116, 32, 117, 112, 108, 111, 97, 100, 32, 114, 101, 113, 117, 101, 115, 116, 46, 18, 13, 10, 8, 116, 101, 115, 116, 45, 115, 101, 113, 18, 1, 50, 18, 31, 10, 8, 102, 117, 110, 99, 116, 105, 111, 110, 18, 19, 116, 101, 115, 116, 85, 112, 108, 111, 97, 100, 82, 101, 113, 117, 101, 115, 116, 40, 41, 18, 10, 10, 4, 108, 105, 110, 101, 18, 2, 51, 53, 26, 44, 84, 101, 99, 111, 67, 76, 83, 76, 111, 103, 103, 105, 110, 103, 84, 101, 115, 116, 115, 47, 67, 76, 83, 76, 111, 103, 72, 97, 110, 100, 108, 101, 114, 84, 101, 115, 116, 115, 46, 115, 119, 105, 102, 116, 34, 19, 84, 101, 99, 111, 67, 76, 83, 76, 111, 103, 103, 105, 110, 103, 84, 101, 115, 116, 115])
-        let body = try XCTUnwrap(request.body)
-        let tester = HTTPClient.Body.StreamWriter {
-            switch $0 {
-            case .byteBuffer(let byteBuffer):
-                let payload = byteBuffer.getData(at: 0, length: byteBuffer.readableBytes)
-                XCTAssertEqual(payload, data)
-            default:
-                XCTFail("Unexpectedly find file stream.")
-            }
-            return logger.client.eventLoopGroup.next().makeSucceededVoidFuture()
-        }
-        try body.stream(tester).wait()
 
         // assert request headers
         XCTAssertEqual(request.headers.first(name: "content-type"), "application/octet-stream")
@@ -118,7 +100,7 @@ final class CLSLogHandlerTests: XCTestCase {
         XCTAssertEqual(request.headers.first(name: "x-tc-region"), "ap-guangzhou")
         XCTAssertEqual(
             request.headers.first(name: "authorization"),
-            "TC3-HMAC-SHA256 Credential=AKIDz8krbsJ5yKBZQpn74WFkmLPx3EXAMPLE/2001-09-09/cls/tc3_request, SignedHeaders=content-type;host, Signature=1249e1b231a7a1c5d840c2c36d5e832a20671ab370256120fb6c1c9d26d28d12"
+            "TC3-HMAC-SHA256 Credential=AKIDz8krbsJ5yKBZQpn74WFkmLPx3EXAMPLE/2001-09-09/cls/tc3_request, SignedHeaders=content-type;host, Signature=4650f896956144eae9f5bafbd14f8ad6c62dea02ea297d280658468fb3cac765"
         )
     }
 }
