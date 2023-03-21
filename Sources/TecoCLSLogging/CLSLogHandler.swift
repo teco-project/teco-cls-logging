@@ -62,13 +62,9 @@ public struct CLSLogHandler: LogHandler {
         let data = try logGroupList.serializedData()
 
         var request = HTTPClientRequest(url: "https://cls.tencentcloudapi.com")
-        guard let url = URL(string: request.url) else {
-            throw HTTPClientError.invalidURL
-        }
         request.method = .POST
-        request.body = .bytes(data)
-        request.headers = signer.signHeaders(
-            url: url,
+        request.headers = try signer.signHeaders(
+            url: request.url,
             method: request.method,
             headers: [
                 "content-type": "application/octet-stream",
@@ -81,6 +77,7 @@ public struct CLSLogHandler: LogHandler {
             mode: signing,
             date: date
         )
+        request.body = .bytes(data)
 
         return request
     }

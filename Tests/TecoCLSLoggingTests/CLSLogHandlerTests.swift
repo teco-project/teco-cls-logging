@@ -2,7 +2,6 @@ import XCTest
 @testable import TecoCLSLogging
 import AsyncHTTPClient
 import Logging
-import NIOFoundationCompat
 import TecoSigner
 
 final class CLSLogHandlerTests: XCTestCase {
