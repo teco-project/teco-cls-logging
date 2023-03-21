@@ -18,11 +18,11 @@ public struct CLSLogHandler: LogHandler {
     public var logLevel: Logger.Level = .info
 
     public let client: HTTPClient
-    public let credentialProvider: () -> any Credential
+    public let credentialProvider: () -> Credential
     public let region: String
     public let topicID: String
 
-    public init(client: HTTPClient, credentialProvider: @escaping () -> any Credential, region: String, topicID: String) {
+    public init(client: HTTPClient, credentialProvider: @escaping () -> Credential, region: String, topicID: String) {
         self.client = client
         self.credentialProvider = credentialProvider
         self.region = region
@@ -37,7 +37,7 @@ public struct CLSLogHandler: LogHandler {
         }
     }
 
-    func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: any Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClient.Request {
+    func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClient.Request {
         let logGroupList = Cls_LogGroupList.with {
             $0.logGroupList = [logGroup]
         }
