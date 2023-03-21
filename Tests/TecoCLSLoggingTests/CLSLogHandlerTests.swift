@@ -21,6 +21,46 @@ final class CLSLogHandlerTests: XCTestCase {
         XCTAssertEqual(data, try logGroup.serializedData())
     }
 
+    func testResolveMetadata() throws {
+        // create logger
+        var logger = CLSLogHandler(
+            client: .init(eventLoopGroupProvider: .createNew),
+            credentialProvider: { StaticCredential(secretId: "", secretKey: "") },
+            region: "ap-guangzhou",
+            topicID: "xxxxxxxx-xxxx-xxxx-xxxx"
+        )
+        defer { try? logger.client.syncShutdown() }
+
+        // set up metadata provider
+        logger.metadataProvider = Logger.MetadataProvider {
+            [
+                "provider-specific": "included",
+                "logger-provided": .dictionary(["source": "metadata-provider"]),
+                "overlapping-source": "provider",
+            ]
+        }
+        // set up logger metadata
+        logger[metadataKey: "logger-specific"] = "included"
+        logger[metadataKey: "logger-provided"] = .dictionary(["source": "logger"])
+        logger[metadataKey: "overlapping-source"] = "logger"
+        // set up log message metadata
+        let metadata: Logger.Metadata = [
+            "message-specific": "included",
+            "overlapping-source": "message",
+        ]
+
+        // assert resolved metadata
+        let resolved = logger.resolveMetadata(metadata)
+        // overlapping key should be resolved from message
+        XCTAssertEqual(resolved["overlapping-source"], "message")
+        // logger metadata should percede metadata provider
+        XCTAssertEqual(resolved["logger-provided"], ["source": "logger"])
+        // all three sources should be taken into account
+        for source in ["provider", "logger", "message"] {
+            XCTAssertEqual(resolved["\(source)-specific"], "included")
+        }
+    }
+
     func testUploadRequest() throws {
         // create logger
         let logger = CLSLogHandler(

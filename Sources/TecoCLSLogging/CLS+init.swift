@@ -2,7 +2,7 @@ import Foundation
 import Logging
 
 extension Cls_LogGroup {
-    init(_ level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt, date: Date = Date()) {
+    init(_ level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata, source: String, file: String, function: String, line: UInt, date: Date = Date()) {
         self = Self.with {
             $0.source = source
             $0.filename = file
@@ -14,12 +14,12 @@ extension Cls_LogGroup {
 }
 
 extension Cls_Log {
-    init(_ level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, function: String, line: UInt, date: Date) {
+    init(_ level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata, function: String, line: UInt, date: Date) {
         self = Self.with {
             var contents: [Content] = []
             contents.append(.init(key: "level", value: level.rawValue.uppercased()))
             contents.append(.init(key: "message", value: .stringConvertible(message)))
-            contents.append(contentsOf: metadata?.map(Content.init) ?? [])
+            contents.append(contentsOf: metadata.map(Content.init))
             contents.append(.init(key: "function", value: function))
             contents.append(.init(key: "line", value: .stringConvertible(line)))
             $0.contents = contents
