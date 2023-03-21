@@ -26,15 +26,15 @@ public struct CLSLogHandler: LogHandler {
 
     public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
         get {
-            metadata[key]
+            self.metadata[key]
         }
         set {
-            metadata[key] = newValue
+            self.metadata[key] = newValue
         }
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
-        let metadata = resolveMetadata(metadata)
+        let metadata = self.resolveMetadata(metadata)
         let log = Cls_LogGroup(level, message: message, metadata: metadata, source: source, file: file, function: function, line: line)
         precondition(log.isInitialized)
         if let request = try? self.uploadLogRequest(log, credential: self.credentialProvider()) {
@@ -47,7 +47,7 @@ public struct CLSLogHandler: LogHandler {
     // MARK: Internal implemenation
 
     func resolveMetadata(_ metadata: Logger.Metadata?) -> Logger.Metadata {
-        return (metadataProvider?.get() ?? [:])
+        return (self.metadataProvider?.get() ?? [:])
             .merging(self.metadata, uniquingKeysWith: { $1 })
             .merging(metadata ?? [:], uniquingKeysWith: { $1 })
     }
