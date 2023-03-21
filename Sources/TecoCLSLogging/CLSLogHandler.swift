@@ -1,21 +1,10 @@
-import Logging
-import Foundation
-import TecoSigner
 import AsyncHTTPClient
+import Foundation
+import Logging
 import NIOHTTP1
+import TecoSigner
 
 public struct CLSLogHandler: LogHandler {
-    public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
-        get {
-            metadata[key]
-        }
-        set {
-            metadata[key] = newValue
-        }
-    }
-
-    public var metadata: Logger.Metadata = .init()
-    public var logLevel: Logger.Level = .info
 
     public let client: HTTPClient
     public let credentialProvider: () -> Credential
@@ -29,6 +18,20 @@ public struct CLSLogHandler: LogHandler {
         self.topicID = topicID
     }
 
+    // MARK: Log handler implemenation
+
+    public var metadata: Logger.Metadata = .init()
+    public var logLevel: Logger.Level = .info
+
+    public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
+        get {
+            metadata[key]
+        }
+        set {
+            metadata[key] = newValue
+        }
+    }
+
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
         let log = Cls_LogGroup(level, message: message, metadata: metadata, source: source, file: file, function: function, line: line)
         precondition(log.isInitialized)
@@ -36,6 +39,8 @@ public struct CLSLogHandler: LogHandler {
             _ = try? self.client.execute(request: request).wait()
         }
     }
+
+    // MARK: Cloud Log Service APIs
 
     func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClient.Request {
         let logGroupList = Cls_LogGroupList.with {
