@@ -2,7 +2,7 @@ import Foundation
 import Logging
 
 extension Cls_LogGroup {
-    init(_ level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata, source: String, file: String, function: String, line: UInt, date: Date = Date()) {
+    init(_ level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata = [:], source: String, file: String, function: String, line: UInt, date: Date = Date()) {
         self = Self.with {
             $0.source = source
             $0.filename = file
