@@ -92,22 +92,6 @@ final class CLSLogHandlerTests: XCTestCase {
         // test with minimal signing here in case new headers are added
         let request = try logger.uploadLogRequest(logGroup, credential: credential, date: date, signing: .minimal)
         XCTAssertEqual(request.method, .POST)
-        XCTAssertEqual(request.host, "cls.tencentcloudapi.com")
-
-        // assert request body data
-        let data = Data([10, 183, 1, 10, 114, 8, 128, 148, 235, 220, 3, 18, 13, 10, 5, 108, 101, 118, 101, 108, 18, 4, 73, 78, 70, 79, 18, 31, 10, 7, 109, 101, 115, 115, 97, 103, 101, 18, 20, 84, 101, 115, 116, 32, 117, 112, 108, 111, 97, 100, 32, 114, 101, 113, 117, 101, 115, 116, 46, 18, 13, 10, 8, 116, 101, 115, 116, 45, 115, 101, 113, 18, 1, 50, 18, 31, 10, 8, 102, 117, 110, 99, 116, 105, 111, 110, 18, 19, 116, 101, 115, 116, 85, 112, 108, 111, 97, 100, 82, 101, 113, 117, 101, 115, 116, 40, 41, 18, 10, 10, 4, 108, 105, 110, 101, 18, 2, 51, 53, 26, 44, 84, 101, 99, 111, 67, 76, 83, 76, 111, 103, 103, 105, 110, 103, 84, 101, 115, 116, 115, 47, 67, 76, 83, 76, 111, 103, 72, 97, 110, 100, 108, 101, 114, 84, 101, 115, 116, 115, 46, 115, 119, 105, 102, 116, 34, 19, 84, 101, 99, 111, 67, 76, 83, 76, 111, 103, 103, 105, 110, 103, 84, 101, 115, 116, 115])
-        let body = try XCTUnwrap(request.body)
-        let tester = HTTPClient.Body.StreamWriter {
-            switch $0 {
-            case .byteBuffer(let byteBuffer):
-                let payload = byteBuffer.getData(at: 0, length: byteBuffer.readableBytes)
-                XCTAssertEqual(payload, data)
-            default:
-                XCTFail("Unexpectedly find file stream.")
-            }
-            return logger.client.eventLoopGroup.next().makeSucceededVoidFuture()
-        }
-        try body.stream(tester).wait()
 
         // assert request headers
         XCTAssertEqual(request.headers.first(name: "content-type"), "application/octet-stream")

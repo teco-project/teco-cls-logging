@@ -38,7 +38,9 @@ public struct CLSLogHandler: LogHandler {
         let log = Cls_LogGroup(level, message: message, metadata: metadata, source: source, file: file, function: function, line: line)
         precondition(log.isInitialized)
         if let request = try? self.uploadLogRequest(log, credential: self.credentialProvider()) {
-            _ = try? self.client.execute(request: request).wait()
+            Task.detached {
+                try await self.client.execute(request, timeout: .seconds(3))
+            }
         }
     }
 
@@ -50,7 +52,7 @@ public struct CLSLogHandler: LogHandler {
             .merging(metadata ?? [:], uniquingKeysWith: { $1 })
     }
 
-    func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClient.Request {
+    func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClientRequest {
         let logGroupList = Cls_LogGroupList.with {
             $0.logGroupList = [logGroup]
         }
@@ -59,13 +61,14 @@ public struct CLSLogHandler: LogHandler {
         let signer = TCSigner(credential: credential, service: "cls")
         let data = try logGroupList.serializedData()
 
-        var request = try HTTPClient.Request(
-            url: "https://cls.tencentcloudapi.com",
-            method: .POST,
-            body: .data(data)
-        )
+        var request = HTTPClientRequest(url: "https://cls.tencentcloudapi.com")
+        guard let url = URL(string: request.url) else {
+            throw HTTPClientError.invalidURL
+        }
+        request.method = .POST
+        request.body = .bytes(data)
         request.headers = signer.signHeaders(
-            url: request.url,
+            url: url,
             method: request.method,
             headers: [
                 "content-type": "application/octet-stream",
