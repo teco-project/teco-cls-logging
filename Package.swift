@@ -15,6 +15,7 @@ let package = Package(
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         .package(url: "https://github.com/apple/swift-log.git", from: "1.2.1"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"),
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.21.0"),
         .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.0.0"),
         .package(url: "https://github.com/teco-project/teco-core.git", .upToNextMinor(from: "0.5.0-beta.2")),
@@ -34,6 +35,9 @@ let package = Package(
         ),
         .testTarget(
             name: "TecoCLSLoggingTests",
-            dependencies: ["TecoCLSLogging"]),
+            dependencies: [
+                "TecoCLSLogging",
+                .product(name: "NIOFoundationCompat", package: "swift-nio"),
+            ]),
     ]
 )

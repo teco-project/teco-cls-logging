@@ -1,8 +1,9 @@
 import XCTest
 @testable import TecoCLSLogging
 import AsyncHTTPClient
-import TecoSigner
 import Logging
+import NIOFoundationCompat
+import TecoSigner
 
 final class CLSLogHandlerTests: XCTestCase {
     func testLogGroup() throws {
