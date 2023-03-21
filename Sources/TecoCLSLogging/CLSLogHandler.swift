@@ -34,9 +34,7 @@ public struct CLSLogHandler: LogHandler {
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
-        let metadata = (metadataProvider?.get() ?? [:])
-            .merging(self.metadata, uniquingKeysWith: { $1 })
-            .merging(metadata ?? [:], uniquingKeysWith: { $1 })
+        let metadata = resolveMetadata(metadata)
         let log = Cls_LogGroup(level, message: message, metadata: metadata, source: source, file: file, function: function, line: line)
         precondition(log.isInitialized)
         if let request = try? self.uploadLogRequest(log, credential: self.credentialProvider()) {
@@ -44,7 +42,13 @@ public struct CLSLogHandler: LogHandler {
         }
     }
 
-    // MARK: Cloud Log Service APIs
+    // MARK: Internal implemenation
+
+    func resolveMetadata(_ metadata: Logger.Metadata?) -> Logger.Metadata {
+        return (metadataProvider?.get() ?? [:])
+            .merging(self.metadata, uniquingKeysWith: { $1 })
+            .merging(metadata ?? [:], uniquingKeysWith: { $1 })
+    }
 
     func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClient.Request {
         let logGroupList = Cls_LogGroupList.with {
