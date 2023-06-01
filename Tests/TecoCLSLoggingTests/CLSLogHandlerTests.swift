@@ -99,7 +99,7 @@ final class CLSLogHandlerTests: XCTestCase {
             return "mock-upload-id"
         }
 
-        // create log handler with custom accumulator
+        // create log handler with custom queue
         let logHandler = CLSLogHandler(
             client: .init(
                 client: .init(eventLoopGroupProvider: .createNew),
@@ -107,11 +107,7 @@ final class CLSLogHandlerTests: XCTestCase {
                 region: "ap-guangzhou",
                 topicID: "xxxxxxxx-xxxx-xxxx-xxxx"
             ),
-            accumulator: .init(
-                maxBatchSize: 3,
-                maxWaitNanoseconds: nil,
-                uploader: upload
-            )
+            queue: .init(configuration: .init(maxBatchSize: 3), uploader: upload)
         )
 
         // we're not actually sending any requests here

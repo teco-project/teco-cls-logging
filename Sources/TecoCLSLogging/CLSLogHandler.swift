@@ -5,18 +5,17 @@ import protocol TecoSigner.Credential
 public struct CLSLogHandler: LogHandler {
 
     public let client: CLSLogClient
-    internal let accumulator: CLSLogAccumulator
+    public let queue: CLSLogQueue
 
     public init(
         client: HTTPClient,
         credentialProvider: @escaping () -> Credential,
         region: String,
         topicID: String,
-        maxBatchSize: UInt = 4,
-        maxWaitNanoseconds: UInt? = nil
+        queueConfig: CLSLogQueue.Configuration = .init()
     ) {
         self.client = .init(client: client, credentialProvider: credentialProvider, region: region, topicID: topicID)
-        self.accumulator = .init(maxBatchSize: maxBatchSize, maxWaitNanoseconds: maxWaitNanoseconds, uploader: self.client.uploadLogs)
+        self.queue = .init(configuration: queueConfig, uploader: self.client.uploadLogs)
     }
 
     // MARK: Log handler implemenation
@@ -38,7 +37,7 @@ public struct CLSLogHandler: LogHandler {
         let metadata = self.resolveMetadata(metadata)
         let log = Cls_LogGroup(level, message: message, metadata: metadata, source: source, file: file, function: function, line: line)
         assert(log.isInitialized)
-        self.accumulator.addLog(log)
+        self.queue.enqueue(log)
     }
 
     // MARK: Internal implemenation
@@ -51,8 +50,8 @@ public struct CLSLogHandler: LogHandler {
 
     // MARK: Test utility
 
-    internal init(client: CLSLogClient, accumulator: CLSLogAccumulator) {
+    internal init(client: CLSLogClient, queue: CLSLogQueue) {
         self.client = client
-        self.accumulator = accumulator
+        self.queue = queue
     }
 }

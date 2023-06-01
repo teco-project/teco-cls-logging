@@ -3,26 +3,22 @@ import XCTest
 import AsyncHTTPClient
 import Atomics
 
-final class CLSLogAccumulatorTests: XCTestCase {
+final class CLSLogQueueTests: XCTestCase {
     func testBatchSize() async throws {
         // set up test helpers
         let batches = ManagedAtomic(0)
         func upload(_ logs: [Cls_LogGroup]) throws -> String {
             XCTAssertLessThanOrEqual(logs.count, 2)
-            batches.wrappingIncrement(ordering: .relaxed)
+            batches.wrappingIncrement(ordering: .sequentiallyConsistent)
             return "mock-upload-id"
         }
 
-        // create log accumulator
-        let accumulator = CLSLogAccumulator(
-            maxBatchSize: 2,
-            maxWaitNanoseconds: nil,
-            uploader: upload
-        )
+        // create log queue
+        let queue = CLSLogQueue(configuration: .init(maxBatchSize: 2), uploader: upload)
 
         // test adding logs
         for id in 0...10 {
-            accumulator.addLog(
+            queue.enqueue(
                 .init(.debug, message: "Hello with ID#\(id)",
                       source: "TecoCLSLoggingTests",
                       file: #fileID, function: #function, line: #line)
@@ -30,10 +26,11 @@ final class CLSLogAccumulatorTests: XCTestCase {
         }
 
         // force flush the logger to upload logs
-        try accumulator.forceFlush()
+        try queue.forceFlush()
+        try await Task.sleep(nanoseconds: 10_000_000)
 
         // assert batch counts
-        XCTAssertEqual(batches.load(ordering: .acquiring), 6)
+        XCTAssertEqual(batches.load(ordering: .sequentiallyConsistent), 6)
     }
 
     func testWaitDuration() async throws {
@@ -43,16 +40,15 @@ final class CLSLogAccumulatorTests: XCTestCase {
             return "mock-upload-id"
         }
 
-        // create log accumulator
-        let accumulator = CLSLogAccumulator(
-            maxBatchSize: 5,
-            maxWaitNanoseconds: 200_000_000,
+        // create log queue
+        let queue = CLSLogQueue(
+            configuration: .init(maxBatchSize: 5, maxWaitNanoseconds: 200_000_000),
             uploader: upload
         )
 
         // test adding logs
         for id in 0...10 {
-            accumulator.addLog(
+            queue.enqueue(
                 .init(.debug, message: "Hello with ID#\(id)",
                       source: "TecoCLSLoggingTests",
                       file: #fileID, function: #function, line: #line)

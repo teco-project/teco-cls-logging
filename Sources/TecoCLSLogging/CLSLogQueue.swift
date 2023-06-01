@@ -1,23 +1,32 @@
 import Dispatch
 import struct NIOConcurrencyHelpers.NIOLock
 
-class CLSLogAccumulator {
+public class CLSLogQueue {
 
     private var lock: NIOLock = .init()
-    private var logQueue: [Cls_LogGroup] = []
+    private var logs: [Cls_LogGroup] = []
     private var deadline: DispatchWallTime = .distantFuture
 
-    let maxBatchSize: Int
-    let maxWaitTime: DispatchTimeInterval?
-    let uploader: ([Cls_LogGroup]) async throws -> String
+    public let configuration: Configuration
 
-    init(maxBatchSize: UInt, maxWaitNanoseconds: UInt?, uploader: @escaping ([Cls_LogGroup]) async throws -> String) {
-        self.maxBatchSize = Int(maxBatchSize)
-        if let maxWaitNanoseconds = maxWaitNanoseconds {
-            self.maxWaitTime = .nanoseconds(Int(maxWaitNanoseconds))
-        } else {
-            self.maxWaitTime = nil
+    public struct Configuration {
+        public let maxBatchSize: Int
+        public let maxWaitTime: DispatchTimeInterval?
+
+        public init(maxBatchSize: UInt = 4, maxWaitNanoseconds: UInt? = nil) {
+            self.maxBatchSize = Int(maxBatchSize)
+            if let maxWaitNanoseconds = maxWaitNanoseconds {
+                self.maxWaitTime = .nanoseconds(Int(maxWaitNanoseconds))
+            } else {
+                self.maxWaitTime = nil
+            }
         }
+    }
+
+    private let uploader: ([Cls_LogGroup]) async throws -> String
+
+    init(configuration: Configuration = .init(), uploader: @escaping ([Cls_LogGroup]) async throws -> String) {
+        self.configuration = configuration
         self.uploader = uploader
     }
 
@@ -49,16 +58,16 @@ class CLSLogAccumulator {
         }
     }
 
-    func addLog(_ log: Cls_LogGroup) {
+    func enqueue(_ log: Cls_LogGroup) {
         // set deadline and append log
         self.lock.withLock {
-            if let maxWaitTime = maxWaitTime {
+            if let maxWaitTime = configuration.maxWaitTime {
                 let deadline = DispatchWallTime.now() + maxWaitTime
                 if self.deadline > deadline {
                     self.deadline = deadline
                 }
             }
-            self.logQueue.append(log)
+            self.logs.append(log)
         }
 
         // upload if required
@@ -71,26 +80,26 @@ class CLSLogAccumulator {
 
     private func batchUploadPayload(force: Bool = false) -> [Cls_LogGroup]? {
         // get log queue length
-        guard !logQueue.isEmpty else {
+        guard !logs.isEmpty else {
             return nil
         }
-        let queued = logQueue.count
+        let queued = logs.count
         assert(queued > 0)
 
         // compute batch size
-        guard queued >= maxBatchSize || deadline < .now() || force else {
+        guard queued >= configuration.maxBatchSize || deadline < .now() || force else {
             return nil
         }
-        let batchSize = min(queued, maxBatchSize)
-        assert(logQueue.count >= batchSize)
+        let batchSize = min(queued, configuration.maxBatchSize)
+        assert(logs.count >= batchSize)
 
         // dequeue the batch
         return self.lock.withLock {
-            let batch = self.logQueue.prefix(batchSize)
+            let batch = self.logs.prefix(batchSize)
             assert(batch.count == batchSize)
-            self.logQueue.removeFirst(batchSize)
+            self.logs.removeSubrange(batch.indices)
 
-            if !self.logQueue.isEmpty, let maxWaitTime = maxWaitTime  {
+            if !self.logs.isEmpty, let maxWaitTime = configuration.maxWaitTime {
                 self.deadline = .now() + maxWaitTime
             } else {
                 self.deadline = .distantFuture
