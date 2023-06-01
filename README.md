@@ -6,8 +6,8 @@
 
 - [x] `LogHandler` integration.
 - [x] Structured log upload.
-- [ ] Deferred upload.
-- [ ] Batch upload.
+- [x] Deferred upload.
+- [x] Batch upload.
 - [ ] Internal service domain.
 - [ ] LZ4 compression.
 - [ ] Hash routing.
