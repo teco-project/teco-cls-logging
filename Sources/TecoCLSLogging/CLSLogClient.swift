@@ -1,5 +1,6 @@
 import AsyncHTTPClient
 import struct Foundation.Date
+import NIOFoundationCompat
 import TecoSigner
 
 public struct CLSLogClient {
