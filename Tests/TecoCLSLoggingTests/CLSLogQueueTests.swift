@@ -3,7 +3,7 @@ import XCTest
 import AsyncHTTPClient
 import Atomics
 
-final class CLSLogAccumulatorTests: XCTestCase {
+final class CLSLogQueueTests: XCTestCase {
     func testBatchSize() async throws {
         // set up test helpers
         let batches = ManagedAtomic(0)
@@ -13,8 +13,8 @@ final class CLSLogAccumulatorTests: XCTestCase {
             return "mock-upload-id"
         }
 
-        // create log accumulator
-        let accumulator = CLSLogAccumulator(
+        // create log queue
+        let queue = CLSLogQueue(
             maxBatchSize: 2,
             maxWaitNanoseconds: nil,
             uploader: upload
@@ -22,7 +22,7 @@ final class CLSLogAccumulatorTests: XCTestCase {
 
         // test adding logs
         for id in 0...10 {
-            accumulator.addLog(
+            queue.enqueue(
                 .init(.debug, message: "Hello with ID#\(id)",
                       source: "TecoCLSLoggingTests",
                       file: #fileID, function: #function, line: #line)
@@ -30,7 +30,7 @@ final class CLSLogAccumulatorTests: XCTestCase {
         }
 
         // force flush the logger to upload logs
-        try accumulator.forceFlush()
+        try queue.forceFlush()
 
         // assert batch counts
         XCTAssertEqual(batches.load(ordering: .acquiring), 6)
@@ -43,8 +43,8 @@ final class CLSLogAccumulatorTests: XCTestCase {
             return "mock-upload-id"
         }
 
-        // create log accumulator
-        let accumulator = CLSLogAccumulator(
+        // create log queue
+        let queue = CLSLogQueue(
             maxBatchSize: 5,
             maxWaitNanoseconds: 200_000_000,
             uploader: upload
@@ -52,7 +52,7 @@ final class CLSLogAccumulatorTests: XCTestCase {
 
         // test adding logs
         for id in 0...10 {
-            accumulator.addLog(
+            queue.enqueue(
                 .init(.debug, message: "Hello with ID#\(id)",
                       source: "TecoCLSLoggingTests",
                       file: #fileID, function: #function, line: #line)

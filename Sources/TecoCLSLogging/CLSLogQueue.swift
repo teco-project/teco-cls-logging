@@ -1,15 +1,16 @@
 import Dispatch
 import struct NIOConcurrencyHelpers.NIOLock
 
-class CLSLogAccumulator {
+class CLSLogQueue {
 
     private var lock: NIOLock = .init()
-    private var logQueue: [Cls_LogGroup] = []
+    private var logs: [Cls_LogGroup] = []
     private var deadline: DispatchWallTime = .distantFuture
 
     let maxBatchSize: Int
     let maxWaitTime: DispatchTimeInterval?
-    let uploader: ([Cls_LogGroup]) async throws -> String
+
+    private let uploader: ([Cls_LogGroup]) async throws -> String
 
     init(maxBatchSize: UInt, maxWaitNanoseconds: UInt?, uploader: @escaping ([Cls_LogGroup]) async throws -> String) {
         self.maxBatchSize = Int(maxBatchSize)
@@ -49,7 +50,7 @@ class CLSLogAccumulator {
         }
     }
 
-    func addLog(_ log: Cls_LogGroup) {
+    func enqueue(_ log: Cls_LogGroup) {
         // set deadline and append log
         self.lock.withLock {
             if let maxWaitTime = maxWaitTime {
@@ -58,7 +59,7 @@ class CLSLogAccumulator {
                     self.deadline = deadline
                 }
             }
-            self.logQueue.append(log)
+            self.logs.append(log)
         }
 
         // upload if required
@@ -71,10 +72,10 @@ class CLSLogAccumulator {
 
     private func batchUploadPayload(force: Bool = false) -> [Cls_LogGroup]? {
         // get log queue length
-        guard !logQueue.isEmpty else {
+        guard !logs.isEmpty else {
             return nil
         }
-        let queued = logQueue.count
+        let queued = logs.count
         assert(queued > 0)
 
         // compute batch size
@@ -82,15 +83,15 @@ class CLSLogAccumulator {
             return nil
         }
         let batchSize = min(queued, maxBatchSize)
-        assert(logQueue.count >= batchSize)
+        assert(logs.count >= batchSize)
 
         // dequeue the batch
         return self.lock.withLock {
-            let batch = self.logQueue.prefix(batchSize)
+            let batch = self.logs.prefix(batchSize)
             assert(batch.count == batchSize)
-            self.logQueue.removeFirst(batchSize)
+            self.logs.removeSubrange(batch.indices)
 
-            if !self.logQueue.isEmpty, let maxWaitTime = maxWaitTime  {
+            if !self.logs.isEmpty, let maxWaitTime = maxWaitTime  {
                 self.deadline = .now() + maxWaitTime
             } else {
                 self.deadline = .distantFuture
