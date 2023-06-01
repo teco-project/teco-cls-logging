@@ -9,7 +9,7 @@ final class CLSLogQueueTests: XCTestCase {
         let batches = ManagedAtomic(0)
         func upload(_ logs: [Cls_LogGroup]) throws -> String {
             XCTAssertLessThanOrEqual(logs.count, 2)
-            batches.wrappingIncrement(ordering: .relaxed)
+            batches.wrappingIncrement(ordering: .sequentiallyConsistent)
             return "mock-upload-id"
         }
 
@@ -27,9 +27,10 @@ final class CLSLogQueueTests: XCTestCase {
 
         // force flush the logger to upload logs
         try queue.forceFlush()
+        try await Task.sleep(nanoseconds: 10_000_000)
 
         // assert batch counts
-        XCTAssertEqual(batches.load(ordering: .acquiring), 6)
+        XCTAssertEqual(batches.load(ordering: .sequentiallyConsistent), 6)
     }
 
     func testWaitDuration() async throws {
