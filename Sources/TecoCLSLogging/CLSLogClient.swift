@@ -30,12 +30,10 @@ public struct CLSLogClient {
             let Response: Response
         }
 
-        let response = try await self.client.execute(request, timeout: .seconds(3))
-        var body = try await response.body.collect(upTo: 1024 * 1024)
+        let httpResponse = try await self.client.execute(request, timeout: .seconds(3))
+        let body = try await httpResponse.body.collect(upTo: 1024 * 1024)
 
-        guard let response = try body.readJSONDecodable(TCResponse.self, length: body.readableBytes) else {
-            throw Error.malformedResponse
-        }
+        let response = try body.getJSONDecodable(TCResponse.self, at: 0, length: body.readableBytes)!
         return response.Response.RequestId
     }
 
@@ -64,11 +62,5 @@ public struct CLSLogClient {
         request.body = .bytes(data)
 
         return request
-    }
-
-    // MARK: Errors
-
-    enum Error: Swift.Error {
-        case malformedResponse
     }
 }
