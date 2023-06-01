@@ -1,6 +1,14 @@
 import Foundation
 import Logging
 
+extension Cls_LogGroupList {
+    init(_ logGroups: some Collection<Cls_LogGroup>) {
+        self = Self.with {
+            $0.logGroupList = Array(logGroups)
+        }
+    }
+}
+
 extension Cls_LogGroup {
     init(_ level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata = [:], source: String, file: String, function: String, line: UInt, date: Date = Date()) {
         self = Self.with {

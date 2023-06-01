@@ -1,21 +1,21 @@
-import AsyncHTTPClient
-import Foundation
+import class AsyncHTTPClient.HTTPClient
 import Logging
-import NIOHTTP1
-import TecoSigner
+import protocol TecoSigner.Credential
 
 public struct CLSLogHandler: LogHandler {
 
-    public let client: HTTPClient
-    public let credentialProvider: () -> Credential
-    public let region: String
-    public let topicID: String
+    public let client: CLSLogClient
+    internal let accumulator: CLSLogAccumulator
 
-    public init(client: HTTPClient, credentialProvider: @escaping () -> Credential, region: String, topicID: String) {
-        self.client = client
-        self.credentialProvider = credentialProvider
-        self.region = region
-        self.topicID = topicID
+    public init(
+        client: HTTPClient,
+        credentialProvider: @escaping () -> any Credential,
+        region: String,
+        topicID: String,
+        batchSize: UInt = 4
+    ) {
+        self.client = .init(client: client, credentialProvider: credentialProvider, region: region, topicID: topicID)
+        self.accumulator = .init(batchSize: batchSize, uploader: self.client.uploadLogs)
     }
 
     // MARK: Log handler implemenation
@@ -36,11 +36,9 @@ public struct CLSLogHandler: LogHandler {
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
         let metadata = self.resolveMetadata(metadata)
         let log = Cls_LogGroup(level, message: message, metadata: metadata, source: source, file: file, function: function, line: line)
-        precondition(log.isInitialized)
-        if let request = try? self.uploadLogRequest(log, credential: self.credentialProvider()) {
-            Task.detached {
-                try await self.client.execute(request, timeout: .seconds(3))
-            }
+        assert(log.isInitialized)
+        Task.detached {
+            try await self.accumulator.addLog(log)
         }
     }
 
@@ -52,33 +50,10 @@ public struct CLSLogHandler: LogHandler {
             .merging(metadata ?? [:], uniquingKeysWith: { $1 })
     }
 
-    func uploadLogRequest(_ logGroup: Cls_LogGroup, credential: Credential, date: Date = Date(), signing: TCSigner.SigningMode = .default) throws -> HTTPClientRequest {
-        let logGroupList = Cls_LogGroupList.with {
-            $0.logGroupList = [logGroup]
-        }
-        precondition(logGroupList.isInitialized)
+    // MARK: Test utility
 
-        let signer = TCSigner(credential: credential, service: "cls")
-        let data = try logGroupList.serializedData()
-
-        var request = HTTPClientRequest(url: "https://cls.tencentcloudapi.com")
-        request.method = .POST
-        request.headers = try signer.signHeaders(
-            url: request.url,
-            method: request.method,
-            headers: [
-                "content-type": "application/octet-stream",
-                "x-tc-action": "UploadLog",
-                "x-tc-version": "2020-10-16",
-                "x-tc-region": self.region,
-                "x-cls-topicid": self.topicID
-            ],
-            body: .data(data),
-            mode: signing,
-            date: date
-        )
-        request.body = .bytes(data)
-
-        return request
+    internal init(client: CLSLogClient, accumulator: CLSLogAccumulator) {
+        self.client = client
+        self.accumulator = accumulator
     }
 }
