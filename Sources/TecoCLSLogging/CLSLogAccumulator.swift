@@ -65,7 +65,6 @@ actor CLSLogAccumulator {
 }
 
 extension CLSLogAccumulator {
-    @available(*, noasync)
     nonisolated func syncShutdown() throws {
         let errorStorageLock = NIOLock()
         let errorStorage: UnsafeMutableTransferBox<Error?> = .init(nil)
