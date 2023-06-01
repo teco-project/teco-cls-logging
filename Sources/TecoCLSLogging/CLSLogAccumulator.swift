@@ -62,7 +62,7 @@ class CLSLogAccumulator {
         }
 
         // upload if required
-        Task {
+        Task.detached {
             if self.shouldUpload {
                 _ = try await self.uploadLogs()
             }
