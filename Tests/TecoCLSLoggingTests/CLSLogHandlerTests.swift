@@ -28,7 +28,7 @@ final class CLSLogHandlerTests: XCTestCase {
             region: "ap-guangzhou",
             topicID: "xxxxxxxx-xxxx-xxxx-xxxx"
         )
-        defer { try? logger.client.syncShutdown() }
+        defer { try? logger.client.client.syncShutdown() }
 
         // set up metadata provider
         logger.metadataProvider = Logger.MetadataProvider {
@@ -61,26 +61,28 @@ final class CLSLogHandlerTests: XCTestCase {
     }
 
     func testUploadRequest() throws {
-        // create logger
-        let logger = CLSLogHandler(
+        // create log client
+        let client = CLSLogClient(
             client: .init(eventLoopGroupProvider: .createNew),
             credentialProvider: { StaticCredential(secretId: "", secretKey: "") },
             region: "ap-guangzhou",
             topicID: "xxxxxxxx-xxxx-xxxx-xxxx"
         )
-        defer { try? logger.client.syncShutdown() }
+        defer { try? client.client.syncShutdown() }
 
         // build log group
-        let date =  Date(timeIntervalSince1970: 1_000_000_000)
-        let logGroup = Cls_LogGroup(
-            .info,
-            message: "Test upload request.",
-            source: "TecoCLSLoggingTests",
-            file: "TecoCLSLoggingTests/CLSLogHandlerTests.swift",
-            function: "testUploadRequest()",
-            line: 1,
-            date: date
-        )
+        let date = Date(timeIntervalSince1970: 1_000_000_000)
+        let logGroupList = Cls_LogGroupList([
+            Cls_LogGroup(
+                .info,
+                message: "Test upload request.",
+                source: "TecoCLSLoggingTests",
+                file: "TecoCLSLoggingTests/CLSLogHandlerTests.swift",
+                function: "testUploadRequest()",
+                line: 1,
+                date: date
+            )
+        ])
 
         // build and assert request basics
         let credential = StaticCredential(
@@ -88,7 +90,7 @@ final class CLSLogHandlerTests: XCTestCase {
             secretKey: "Gu5t9xGARNpq86cd98joQYCN3EXAMPLE"
         )
         // test with minimal signing here in case new headers are added
-        let request = try logger.uploadLogRequest(logGroup, credential: credential, date: date, signing: .minimal)
+        let request = try client.uploadLogRequest(logGroupList, credential: credential, date: date, signing: .minimal)
         XCTAssertEqual(request.method, .POST)
 
         // assert request headers
@@ -102,5 +104,42 @@ final class CLSLogHandlerTests: XCTestCase {
             request.headers.first(name: "authorization"),
             "TC3-HMAC-SHA256 Credential=AKIDz8krbsJ5yKBZQpn74WFkmLPx3EXAMPLE/2001-09-09/cls/tc3_request, SignedHeaders=content-type;host, Signature=4650f896956144eae9f5bafbd14f8ad6c62dea02ea297d280658468fb3cac765"
         )
+    }
+
+    func testLogger() throws {
+        // set up test helpers
+        func upload(_ logs: [Cls_LogGroup]) throws -> String {
+            let logGroupList = Cls_LogGroupList(logs)
+            XCTAssertTrue(logGroupList.isInitialized)
+            XCTAssertEqual(logs.count, 3)
+            return "mock-upload-id"
+        }
+
+        // create log handler with custom accumulator
+        let logHandler = CLSLogHandler(
+            client: .init(
+                client: .init(eventLoopGroupProvider: .createNew),
+                credentialProvider: { StaticCredential(secretId: "", secretKey: "") },
+                region: "ap-guangzhou",
+                topicID: "xxxxxxxx-xxxx-xxxx-xxxx"
+            ),
+            accumulator: .init(
+                maxBatchSize: 4,
+                maxWaitNanoseconds: nil,
+                uploader: upload
+            )
+        )
+
+        // we're not actually sending any requests here
+        try logHandler.client.client.syncShutdown()
+
+        // test with logger
+        let logger = Logger(label: "test", factory: { _ in logHandler })
+        logger.info("Test 1")
+        logger.error("Test 2", metadata: ["reason" : "test error"])
+        logger.warning("Test 3")
+
+        // force flush the logger to upload logs
+        try logHandler.accumulator.forceFlush()
     }
 }
