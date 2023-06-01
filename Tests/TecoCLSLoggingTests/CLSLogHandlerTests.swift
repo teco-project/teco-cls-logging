@@ -28,10 +28,7 @@ final class CLSLogHandlerTests: XCTestCase {
             region: "ap-guangzhou",
             topicID: "xxxxxxxx-xxxx-xxxx-xxxx"
         )
-        defer {
-            try? logger.client.client.syncShutdown()
-            try? logger.accumulator.syncShutdown()
-        }
+        defer { try? logger.client.client.syncShutdown() }
 
         // set up metadata provider
         logger.metadataProvider = Logger.MetadataProvider {
@@ -128,7 +125,7 @@ final class CLSLogHandlerTests: XCTestCase {
             ),
             accumulator: .init(
                 maxBatchSize: 4,
-                maxWaitNanoseconds: 10_000_000_000,
+                maxWaitNanoseconds: nil,
                 uploader: upload
             )
         )
@@ -142,7 +139,7 @@ final class CLSLogHandlerTests: XCTestCase {
         logger.error("Test 2", metadata: ["reason" : "test error"])
         logger.warning("Test 3")
 
-        // shut down the log handler should send all pending logs
-        try logHandler.accumulator.syncShutdown()
+        // force flush the logger to upload logs
+        try logHandler.accumulator.forceFlush()
     }
 }

@@ -6,7 +6,6 @@ class CLSLogAccumulator {
     private var lock: NIOLock = .init()
     private var logs: [Cls_LogGroup] = []
     private var deadline: DispatchWallTime = .distantFuture
-    private var isShutdown = false
 
     let maxBatchSize: Int
     let maxWaitNanoseconds: Int?
@@ -22,12 +21,32 @@ class CLSLogAccumulator {
         self.uploader = uploader
     }
 
-    func shutdown() async throws {
-        precondition(self.isShutdown == false)
-        while !self.logs.isEmpty {
-            try await self.uploadLogs()
+    deinit {
+        try? self.forceFlush()
+    }
+
+    func forceFlush() throws {
+        let errorStorageLock = NIOLock()
+        let errorStorage: UnsafeMutableTransferBox<Error?> = .init(nil)
+        let continuation = DispatchWorkItem {}
+        Task.detached {
+            do {
+                while !self.logs.isEmpty {
+                    try await self.uploadLogs()
+                }
+            } catch {
+                errorStorageLock.withLock {
+                    errorStorage.wrappedValue = error
+                }
+            }
+            continuation.perform()
         }
-        self.isShutdown = true
+        continuation.wait()
+        try errorStorageLock.withLock {
+            if let error = errorStorage.wrappedValue {
+                throw error
+            }
+        }
     }
 
     func addLog(_ log: Cls_LogGroup) {
@@ -75,29 +94,5 @@ class CLSLogAccumulator {
 
     private var shouldUpload: Bool {
         return logs.count >= maxBatchSize || deadline < .now()
-    }
-}
-
-extension CLSLogAccumulator {
-    func syncShutdown() throws {
-        let errorStorageLock = NIOLock()
-        let errorStorage: UnsafeMutableTransferBox<Error?> = .init(nil)
-        let continuation = DispatchWorkItem {}
-        Task.detached {
-            do {
-                try await self.shutdown()
-            } catch {
-                errorStorageLock.withLock {
-                    errorStorage.wrappedValue = error
-                }
-            }
-            continuation.perform()
-        }
-        continuation.wait()
-        try errorStorageLock.withLock {
-            if let error = errorStorage.wrappedValue {
-                throw error
-            }
-        }
     }
 }
