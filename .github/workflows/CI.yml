@@ -46,4 +46,6 @@ jobs:
       - name: Build
         run: swift build
       - name: Test
+        # Skip testing due to Concurrency backport issue
+        if: ${{ !startsWith(matrix.os, 'macos-') || matrix.swift >= '5.7' }}
         run: swift test
