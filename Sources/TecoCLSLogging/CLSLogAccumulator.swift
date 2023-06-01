@@ -13,7 +13,7 @@ actor CLSLogAccumulator {
 
     init(maxBatchSize: UInt, maxWaitNanoseconds: UInt?, uploader: @escaping ([Cls_LogGroup]) async throws -> String) {
         self.maxBatchSize = Int(maxBatchSize)
-        if let maxWaitNanoseconds {
+        if let maxWaitNanoseconds = maxWaitNanoseconds {
             self.maxWaitNanoseconds = Int(maxWaitNanoseconds)
         } else {
             self.maxWaitNanoseconds = nil
@@ -31,7 +31,7 @@ actor CLSLogAccumulator {
 
     func addLog(_ log: Cls_LogGroup) async throws {
         // set deadline
-        if let maxWaitNanoseconds {
+        if let maxWaitNanoseconds = maxWaitNanoseconds {
             let deadline = DispatchWallTime.now() + .nanoseconds(maxWaitNanoseconds)
             if self.deadline > deadline {
                 self.deadline = deadline
