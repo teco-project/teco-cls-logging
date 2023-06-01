@@ -84,12 +84,7 @@ class CLSLogAccumulator {
         }
 
         // upload logs
-        let requestID = try await uploader(.init(batch))
-        #if DEBUG
-        print("CLS logs sent with request ID: \(requestID)")
-        #else
-        _ = requestID
-        #endif
+        _ = try await uploader(.init(batch))
     }
 
     private var shouldUpload: Bool {
