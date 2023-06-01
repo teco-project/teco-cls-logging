@@ -1,16 +1,23 @@
-import class Dispatch.DispatchWorkItem
+import Dispatch
 import struct NIOConcurrencyHelpers.NIOLock
 
 actor CLSLogAccumulator {
 
     private var logs: [Cls_LogGroup] = []
+    private var deadline: DispatchWallTime = .distantFuture
     private var isShutdown = false
 
-    nonisolated let batchSize: Int
+    nonisolated let maxBatchSize: Int
+    nonisolated let maxWaitNanoseconds: Int?
     nonisolated let uploader: (any Collection<Cls_LogGroup>) async throws -> String
 
-    init(batchSize: UInt, uploader: @escaping (any Collection<Cls_LogGroup>) async throws -> String) {
-        self.batchSize = Int(batchSize)
+    init(maxBatchSize: UInt, maxWaitNanoseconds: UInt?, uploader: @escaping (any Collection<Cls_LogGroup>) async throws -> String) {
+        self.maxBatchSize = Int(maxBatchSize)
+        if let maxWaitNanoseconds {
+            self.maxWaitNanoseconds = Int(maxWaitNanoseconds)
+        } else {
+            self.maxWaitNanoseconds = nil
+        }
         self.uploader = uploader
     }
 
@@ -23,6 +30,15 @@ actor CLSLogAccumulator {
     }
 
     func addLog(_ log: Cls_LogGroup) async throws {
+        // set deadline
+        if let maxWaitNanoseconds {
+            let deadline = DispatchWallTime.now() + .nanoseconds(maxWaitNanoseconds)
+            if self.deadline > deadline {
+                self.deadline = deadline
+            }
+        }
+
+        // append and upload
         self.logs.append(log)
         if self.shouldUpload {
             _ = try await self.uploadLogs()
@@ -30,8 +46,12 @@ actor CLSLogAccumulator {
     }
 
     private func uploadLogs() async throws -> String {
-        let batch = self.logs.prefix(batchSize)
+        // fetch batch logs
+        let batch = self.logs.prefix(maxBatchSize)
         self.logs.removeFirst(batch.count)
+        self.deadline = .distantFuture
+
+        // upload logs
         let requestID = try await uploader(batch)
         #if DEBUG
         print("CLS logs sent with request ID: \(requestID)")
@@ -40,7 +60,7 @@ actor CLSLogAccumulator {
     }
 
     private var shouldUpload: Bool {
-        return logs.count >= batchSize
+        return logs.count >= maxBatchSize || deadline < .now()
     }
 }
 

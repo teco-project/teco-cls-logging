@@ -12,10 +12,11 @@ public struct CLSLogHandler: LogHandler {
         credentialProvider: @escaping () -> any Credential,
         region: String,
         topicID: String,
-        batchSize: UInt = 4
+        maxBatchSize: UInt = 4,
+        maxWaitNanoseconds: UInt? = nil
     ) {
         self.client = .init(client: client, credentialProvider: credentialProvider, region: region, topicID: topicID)
-        self.accumulator = .init(batchSize: batchSize, uploader: self.client.uploadLogs)
+        self.accumulator = .init(maxBatchSize: maxBatchSize, maxWaitNanoseconds: maxWaitNanoseconds, uploader: self.client.uploadLogs)
     }
 
     // MARK: Log handler implemenation
