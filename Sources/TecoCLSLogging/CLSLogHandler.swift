@@ -38,9 +38,7 @@ public struct CLSLogHandler: LogHandler {
         let metadata = self.resolveMetadata(metadata)
         let log = Cls_LogGroup(level, message: message, metadata: metadata, source: source, file: file, function: function, line: line)
         assert(log.isInitialized)
-        Task.detached {
-            try await self.accumulator.addLog(log)
-        }
+        self.accumulator.addLog(log)
     }
 
     // MARK: Internal implemenation
