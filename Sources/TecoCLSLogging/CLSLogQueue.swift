@@ -1,24 +1,32 @@
 import Dispatch
 import struct NIOConcurrencyHelpers.NIOLock
 
-class CLSLogQueue {
+public class CLSLogQueue {
 
     private var lock: NIOLock = .init()
     private var logs: [Cls_LogGroup] = []
     private var deadline: DispatchWallTime = .distantFuture
 
-    let maxBatchSize: Int
-    let maxWaitTime: DispatchTimeInterval?
+    public let configuration: Configuration
+
+    public struct Configuration {
+        public let maxBatchSize: Int
+        public let maxWaitTime: DispatchTimeInterval?
+
+        public init(maxBatchSize: UInt = 4, maxWaitNanoseconds: UInt? = nil) {
+            self.maxBatchSize = Int(maxBatchSize)
+            if let maxWaitNanoseconds = maxWaitNanoseconds {
+                self.maxWaitTime = .nanoseconds(Int(maxWaitNanoseconds))
+            } else {
+                self.maxWaitTime = nil
+            }
+        }
+    }
 
     private let uploader: ([Cls_LogGroup]) async throws -> String
 
-    init(maxBatchSize: UInt, maxWaitNanoseconds: UInt?, uploader: @escaping ([Cls_LogGroup]) async throws -> String) {
-        self.maxBatchSize = Int(maxBatchSize)
-        if let maxWaitNanoseconds = maxWaitNanoseconds {
-            self.maxWaitTime = .nanoseconds(Int(maxWaitNanoseconds))
-        } else {
-            self.maxWaitTime = nil
-        }
+    init(configuration: Configuration = .init(), uploader: @escaping ([Cls_LogGroup]) async throws -> String) {
+        self.configuration = configuration
         self.uploader = uploader
     }
 
@@ -53,7 +61,7 @@ class CLSLogQueue {
     func enqueue(_ log: Cls_LogGroup) {
         // set deadline and append log
         self.lock.withLock {
-            if let maxWaitTime = maxWaitTime {
+            if let maxWaitTime = configuration.maxWaitTime {
                 let deadline = DispatchWallTime.now() + maxWaitTime
                 if self.deadline > deadline {
                     self.deadline = deadline
@@ -79,10 +87,10 @@ class CLSLogQueue {
         assert(queued > 0)
 
         // compute batch size
-        guard queued >= maxBatchSize || deadline < .now() || force else {
+        guard queued >= configuration.maxBatchSize || deadline < .now() || force else {
             return nil
         }
-        let batchSize = min(queued, maxBatchSize)
+        let batchSize = min(queued, configuration.maxBatchSize)
         assert(logs.count >= batchSize)
 
         // dequeue the batch
@@ -91,7 +99,7 @@ class CLSLogQueue {
             assert(batch.count == batchSize)
             self.logs.removeSubrange(batch.indices)
 
-            if !self.logs.isEmpty, let maxWaitTime = maxWaitTime  {
+            if !self.logs.isEmpty, let maxWaitTime = configuration.maxWaitTime {
                 self.deadline = .now() + maxWaitTime
             } else {
                 self.deadline = .distantFuture

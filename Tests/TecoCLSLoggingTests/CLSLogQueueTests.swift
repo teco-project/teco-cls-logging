@@ -14,11 +14,7 @@ final class CLSLogQueueTests: XCTestCase {
         }
 
         // create log queue
-        let queue = CLSLogQueue(
-            maxBatchSize: 2,
-            maxWaitNanoseconds: nil,
-            uploader: upload
-        )
+        let queue = CLSLogQueue(configuration: .init(maxBatchSize: 2), uploader: upload)
 
         // test adding logs
         for id in 0...10 {
@@ -45,8 +41,7 @@ final class CLSLogQueueTests: XCTestCase {
 
         // create log queue
         let queue = CLSLogQueue(
-            maxBatchSize: 5,
-            maxWaitNanoseconds: 200_000_000,
+            configuration: .init(maxBatchSize: 5, maxWaitNanoseconds: 200_000_000),
             uploader: upload
         )
 

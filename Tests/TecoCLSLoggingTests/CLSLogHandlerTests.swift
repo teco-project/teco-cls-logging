@@ -107,11 +107,7 @@ final class CLSLogHandlerTests: XCTestCase {
                 region: "ap-guangzhou",
                 topicID: "xxxxxxxx-xxxx-xxxx-xxxx"
             ),
-            queue: .init(
-                maxBatchSize: 3,
-                maxWaitNanoseconds: nil,
-                uploader: upload
-            )
+            queue: .init(configuration: .init(maxBatchSize: 3), uploader: upload)
         )
 
         // we're not actually sending any requests here
