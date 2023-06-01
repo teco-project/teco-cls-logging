@@ -111,7 +111,7 @@ final class CLSLogHandlerTests: XCTestCase {
 
     func testLogger() throws {
         // set up test helpers
-        func upload(_ logs: any Collection<Cls_LogGroup>) throws -> String {
+        func upload(_ logs: [Cls_LogGroup]) throws -> String {
             let logGroupList = Cls_LogGroupList(logs)
             XCTAssertTrue(logGroupList.isInitialized)
             XCTAssertEqual(logs.count, 3)

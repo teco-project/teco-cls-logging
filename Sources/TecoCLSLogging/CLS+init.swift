@@ -2,7 +2,7 @@ import Foundation
 import Logging
 
 extension Cls_LogGroupList {
-    init(_ logGroups: some Collection<Cls_LogGroup>) {
+    init(_ logGroups: [Cls_LogGroup]) {
         self = Self.with {
             $0.logGroupList = Array(logGroups)
         }

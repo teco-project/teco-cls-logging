@@ -9,7 +9,7 @@ public struct CLSLogHandler: LogHandler {
 
     public init(
         client: HTTPClient,
-        credentialProvider: @escaping () -> any Credential,
+        credentialProvider: @escaping () -> Credential,
         region: String,
         topicID: String,
         maxBatchSize: UInt = 4,

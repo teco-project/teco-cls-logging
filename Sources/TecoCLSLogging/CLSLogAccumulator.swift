@@ -9,9 +9,9 @@ actor CLSLogAccumulator {
 
     nonisolated let maxBatchSize: Int
     nonisolated let maxWaitNanoseconds: Int?
-    nonisolated let uploader: (any Collection<Cls_LogGroup>) async throws -> String
+    nonisolated let uploader: ([Cls_LogGroup]) async throws -> String
 
-    init(maxBatchSize: UInt, maxWaitNanoseconds: UInt?, uploader: @escaping (any Collection<Cls_LogGroup>) async throws -> String) {
+    init(maxBatchSize: UInt, maxWaitNanoseconds: UInt?, uploader: @escaping ([Cls_LogGroup]) async throws -> String) {
         self.maxBatchSize = Int(maxBatchSize)
         if let maxWaitNanoseconds {
             self.maxWaitNanoseconds = Int(maxWaitNanoseconds)
@@ -52,7 +52,7 @@ actor CLSLogAccumulator {
         self.deadline = .distantFuture
 
         // upload logs
-        let requestID = try await uploader(batch)
+        let requestID = try await uploader(.init(batch))
         #if DEBUG
         print("CLS logs sent with request ID: \(requestID)")
         #endif

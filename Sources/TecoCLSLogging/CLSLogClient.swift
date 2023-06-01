@@ -19,7 +19,7 @@ public struct CLSLogClient {
 
     // MARK: Internal implemenation
 
-    func uploadLogs(_ logs: any Collection<Cls_LogGroup>) async throws -> String {
+    func uploadLogs(_ logs: [Cls_LogGroup]) async throws -> String {
         let logGroupList = Cls_LogGroupList(logs)
         let request = try self.uploadLogRequest(logGroupList, credential: self.credentialProvider())
 
